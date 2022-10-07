@@ -1,15 +1,14 @@
-use crate::nop_lib::Nop;
 use clap::{App, Arg, ArgMatches};
-use mdbook::book::Book;
 use mdbook::errors::Error;
-use mdbook::preprocess::{CmdPreprocessor, Preprocessor, PreprocessorContext};
+use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
+use mdbook_skeptic_lib::Nop;
 
 pub fn make_app() -> App<'static> {
-    App::new("nop-preprocessor")
-        .about("A mdbook preprocessor which does precisely nothing")
+    App::new("mdbook-skeptic")
+        .about("A mdbook preprocessor which significantly improves the testing experience.")
         .subcommand(
             App::new("supports")
                 .arg(Arg::new("renderer").required(true))
@@ -20,7 +19,6 @@ pub fn make_app() -> App<'static> {
 fn main() {
     let matches = make_app().get_matches();
 
-    // Users will want to construct their own preprocessor here
     let preprocessor = Nop::new();
 
     if let Some(sub_args) = matches.subcommand_matches("supports") {
@@ -65,40 +63,3 @@ fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
     }
 }
 
-/// The actual implementation of the `Nop` preprocessor. This would usually go
-/// in your main `lib.rs` file.
-mod nop_lib {
-    use super::*;
-
-    /// A no-op preprocessor.
-    pub struct Nop;
-
-    impl Nop {
-        pub fn new() -> Nop {
-            Nop
-        }
-    }
-
-    impl Preprocessor for Nop {
-        fn name(&self) -> &str {
-            "nop-preprocessor"
-        }
-
-        fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
-            // In testing we want to tell the preprocessor to blow up by setting a
-            // particular config value
-            if let Some(nop_cfg) = ctx.config.get_preprocessor(self.name()) {
-                if nop_cfg.contains_key("blow-up") {
-                    anyhow::bail!("Boom!!1!");
-                }
-            }
-
-            // we *are* a no-op preprocessor after all
-            Ok(book)
-        }
-
-        fn supports_renderer(&self, renderer: &str) -> bool {
-            renderer != "not-supported"
-        }
-    }
-}
