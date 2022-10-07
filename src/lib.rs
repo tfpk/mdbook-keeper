@@ -3,17 +3,18 @@ use mdbook::errors::Error;
 use mdbook::book::Book;
 
 /// A no-op preprocessor.
-pub struct Nop;
+#[derive(Default)]
+pub struct Skeptic;
 
-impl Nop {
-    pub fn new() -> Nop {
-        Nop
+impl Skeptic {
+    pub fn new() -> Skeptic {
+        Skeptic
     }
 }
 
-impl Preprocessor for Nop {
+impl Preprocessor for Skeptic {
     fn name(&self) -> &str {
-        "nop-preprocessor"
+        "mdbook-skeptic-preprocessor"
     }
 
     fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {

@@ -4,7 +4,7 @@ use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
-use mdbook_skeptic_lib::Nop;
+use mdbook_skeptic_lib::Skeptic;
 
 pub fn make_app() -> App<'static> {
     App::new("mdbook-skeptic")
@@ -19,7 +19,7 @@ pub fn make_app() -> App<'static> {
 fn main() {
     let matches = make_app().get_matches();
 
-    let preprocessor = Nop::new();
+    let preprocessor = Skeptic::new();
 
     if let Some(sub_args) = matches.subcommand_matches("supports") {
         handle_supports(&preprocessor, sub_args);
