@@ -4,10 +4,10 @@ use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
-use mdbook_skeptic_lib::Skeptic;
+use mdbook_keeper_lib::BookKeeper;
 
 pub fn make_app() -> App<'static> {
-    App::new("mdbook-skeptic")
+    App::new("mdbook-keeper")
         .about("A mdbook preprocessor which significantly improves the testing experience.")
         .subcommand(
             App::new("supports")
@@ -19,7 +19,7 @@ pub fn make_app() -> App<'static> {
 fn main() {
     let matches = make_app().get_matches();
 
-    let preprocessor = Skeptic::new();
+    let preprocessor = BookKeeper::new();
 
     if let Some(sub_args) = matches.subcommand_matches("supports") {
         handle_supports(&preprocessor, sub_args);

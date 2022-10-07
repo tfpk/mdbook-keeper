@@ -820,7 +820,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mdbook-skeptic"
+name = "mdbook-keeper"
 version = "0.1.0"
 dependencies = [
  "anyhow",

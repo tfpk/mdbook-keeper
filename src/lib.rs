@@ -4,17 +4,17 @@ use mdbook::book::Book;
 
 /// A no-op preprocessor.
 #[derive(Default)]
-pub struct Skeptic;
+pub struct BookKeeper;
 
-impl Skeptic {
-    pub fn new() -> Skeptic {
-        Skeptic
+impl BookKeeper {
+    pub fn new() -> BookKeeper {
+        BookKeeper
     }
 }
 
-impl Preprocessor for Skeptic {
+impl Preprocessor for BookKeeper {
     fn name(&self) -> &str {
-        "mdbook-skeptic-preprocessor"
+        "mdbook-keeper-preprocessor"
     }
 
     fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
@@ -25,6 +25,8 @@ impl Preprocessor for Skeptic {
                 anyhow::bail!("Boom!!1!");
             }
         }
+
+        eprintln!("{:#?}", book);
 
         // we *are* a no-op preprocessor after all
         Ok(book)
