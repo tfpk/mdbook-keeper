@@ -1,5 +1,5 @@
-mod skeptic;
 mod run_tests;
+mod skeptic;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use slug::slugify;
 use std::path::{Path, PathBuf};
 
-use skeptic::{extract_tests_from_string, create_test_input, Test};
-use run_tests::{TestResult, handle_test, CompileType};
+use run_tests::{handle_test, CompileType, TestResult};
+use skeptic::{create_test_input, extract_tests_from_string, Test};
 
 /// A no-op preprocessor.
 #[derive(Default)]
@@ -31,16 +31,15 @@ fn get_tests_from_book(book: &Book) -> Vec<Test> {
     });
 
     chapters
-        .map(|c| {
+        .flat_map(|c| {
             let file_name = c
                 .path
                 .as_ref()
                 .and_then(|x| x.file_stem())
                 .map(|x| x.to_string_lossy().into_owned())
-                .unwrap_or(slugify(c.name.clone()).replace("-", "_"));
+                .unwrap_or(slugify(c.name.clone()).replace('-', "_"));
             extract_tests_from_string(&c.content, &file_name).0
         })
-        .flatten()
         .collect::<Vec<_>>()
 }
 
@@ -77,8 +76,7 @@ fn create_config_from_ctx(ctx: &PreprocessorContext, preprocessor_name: &str) ->
     let preprocessor_config = ctx.config.get_preprocessor(preprocessor_name);
     let keeper_config: KeeperConfigParser = match preprocessor_config {
         Some(config) => toml::de::from_str(
-            &toml::ser::to_string(&config)
-                .expect("this must succeed, it was just toml"),
+            &toml::ser::to_string(&config).expect("this must succeed, it was just toml"),
         )
         .unwrap(),
         None => KeeperConfigParser::default(),
@@ -108,7 +106,7 @@ fn create_config_from_ctx(ctx: &PreprocessorContext, preprocessor_name: &str) ->
     }
 }
 
-fn setup_env_from_config(config: &KeeperConfig)  {
+fn setup_env_from_config(config: &KeeperConfig) {
     if !config.test_dir.is_dir() {
         std::fs::create_dir(&config.test_dir).unwrap();
     }
@@ -127,11 +125,10 @@ fn write_test_to_file(test: &Test, test_dir: &Path) -> PathBuf {
     file_name
 }
 
-
 fn run_tests(tests: &[Test], config: &KeeperConfig) {
     for test in tests {
         if test.no_run {
-            continue
+            continue;
         }
         let testcase_path = write_test_to_file(test, &config.test_dir);
 
@@ -140,34 +137,37 @@ fn run_tests(tests: &[Test], config: &KeeperConfig) {
             &config.target_dir,
             current_platform::CURRENT_PLATFORM,
             &testcase_path,
-            if test.no_run {CompileType::Check} else {CompileType::Full}
+            if test.no_run {
+                CompileType::Check
+            } else {
+                CompileType::Full
+            },
         );
 
         let output = match output {
             TestResult::CompileFailed(output) => {
                 eprintln!("Test {} Failed To Compile.", test.name);
                 output
-            },
-            TestResult::RunFailed(output) if test.should_panic  => {
+            }
+            TestResult::RunFailed(output) if test.should_panic => {
                 eprintln!("Test {} Panicked As Expected.", test.name);
                 output
-            },
-            TestResult::RunFailed(output)   => {
+            }
+            TestResult::RunFailed(output) => {
                 eprintln!("Test {} Failed To Run Correctly.", test.name);
                 output
-            },
-            TestResult::Successful(output) if test.should_panic  => {
+            }
+            TestResult::Successful(output) if test.should_panic => {
                 eprintln!("Test {} Failed To Panic As Expected.", test.name);
                 output
-            },
-            TestResult::Successful(output)   => {
+            }
+            TestResult::Successful(output) => {
                 eprintln!("Test {} Ran Successfully.", test.name);
                 output
-            },
+            }
         };
         eprintln!("Stdout:\n{}", String::from_utf8(output.stdout).unwrap());
         eprintln!("Stderr:\n{}", String::from_utf8(output.stderr).unwrap());
-
     }
 }
 

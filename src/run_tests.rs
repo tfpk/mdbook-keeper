@@ -16,7 +16,7 @@ use walkdir::WalkDir;
 pub enum TestResult {
     Successful(Output),
     CompileFailed(Output),
-    RunFailed(Output)
+    RunFailed(Output),
 }
 
 /// This function is designed to run a single test.
@@ -34,7 +34,6 @@ pub fn handle_test<'a>(
     testcase_path: &Path,
     compile_type: CompileType,
 ) -> TestResult {
-
     // First, let's get the command ready, no matter
     // whether or not a Cargo.toml is specified.
 
@@ -44,8 +43,7 @@ pub fn handle_test<'a>(
         .arg("--verbose")
         .arg("--crate-type=bin");
 
-    if let Some(manifest_dir) = manifest_dir  {
-
+    if let Some(manifest_dir) = manifest_dir {
         // OK, here's where a bunch of magic happens using assumptions
         // about cargo internals. We are going to use rustc to compile
         // the examples, but to do that we've got to tell it where to
@@ -81,7 +79,9 @@ pub fn handle_test<'a>(
             .arg("--target")
             .arg(&target_triple);
 
-        for dep in get_rlib_dependencies(manifest_dir.to_path_buf(), target_dir.to_path_buf()).expect("failed to read dependencies") {
+        for dep in get_rlib_dependencies(manifest_dir.to_path_buf(), target_dir.to_path_buf())
+            .expect("failed to read dependencies")
+        {
             cmd.arg("--extern");
             cmd.arg(format!(
                 "{}={}",
@@ -108,7 +108,9 @@ pub fn handle_test<'a>(
     } else if CompileType::Check == compile_type {
         TestResult::Successful(command_result)
     } else {
-        let mut cmd_current_dir = testcase_path.parent().expect("File must live in a directory.");
+        let cmd_current_dir = testcase_path
+            .parent()
+            .expect("File must live in a directory.");
 
         let mut cmd = Command::new(binary_path);
         cmd.current_dir(cmd_current_dir);
@@ -119,8 +121,7 @@ pub fn handle_test<'a>(
         } else {
             TestResult::RunFailed(command_result)
         }
-    }
-
+    };
 }
 
 // Retrieve the exact dependencies for a given build by
