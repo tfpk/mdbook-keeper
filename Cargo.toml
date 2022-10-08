@@ -19,6 +19,13 @@ anyhow = "1.0.58"
 clap = "3.2.8"
 mdbook = "0.4.21"
 semver = "1.0.12"
-serde = { version="1.0.138", features=["derive"] }
+serde = { version = "1.0.138", features = ["derive"] }
 serde_json = "1.0.82"
-skeptic = "0.13.7"
+pulldown-cmark = { version = "0.9", default-features = false }
+bytecount = "0.6"
+slug = "0.1.4"
+toml = "0.5.9"
+cargo_metadata = "0.15.0"
+error-chain = "0.12.4"
+walkdir = "2.3.2"
+current_platform = "0.2.0"

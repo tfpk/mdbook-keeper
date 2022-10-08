@@ -1,10 +1,10 @@
 use clap::{App, Arg, ArgMatches};
 use mdbook::errors::Error;
 use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
+use mdbook_keeper_lib::BookKeeper;
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
-use mdbook_keeper_lib::BookKeeper;
 
 pub fn make_app() -> App<'static> {
     App::new("mdbook-keeper")
@@ -62,4 +62,3 @@ fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
         process::exit(1);
     }
 }
-
