@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Error as IoError, Read};
 use std::mem;
-use std::path::Path;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag};
 
@@ -76,53 +72,6 @@ pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option
         }
     }
     (tests, old_template)
-}
-
-pub fn load_templates(path: &Path) -> Result<HashMap<String, String>, IoError> {
-    let file_name = format!(
-        "{}.skt.md",
-        path.file_name().expect("no file name").to_string_lossy()
-    );
-    let path = path.with_file_name(&file_name);
-    if !path.exists() {
-        return Ok(HashMap::new());
-    }
-
-    let mut map = HashMap::new();
-
-    let mut file = File::open(path)?;
-    let s = &mut String::new();
-    file.read_to_string(s)?;
-    let parser = Parser::new(s);
-
-    let mut code_buffer = None;
-
-    for event in parser {
-        match event {
-            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref info))) => {
-                let code_block_info = parse_code_block_info(info);
-                if code_block_info.is_rust {
-                    code_buffer = Some(Vec::new());
-                }
-            }
-            Event::Text(text) => {
-                if let Some(ref mut buf) = code_buffer {
-                    buf.push(text.to_string());
-                }
-            }
-            Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref info))) => {
-                let code_block_info = parse_code_block_info(info);
-                if let Some(buf) = code_buffer.take() {
-                    if let Some(t) = code_block_info.template {
-                        map.insert(t, buf.into_iter().collect());
-                    }
-                }
-            }
-            _ => (),
-        }
-    }
-
-    Ok(map)
 }
 
 pub fn sanitize_test_name(s: &str) -> String {

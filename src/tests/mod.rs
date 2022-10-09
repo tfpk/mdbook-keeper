@@ -132,16 +132,12 @@ fn long_book() -> Result<(), Error> {
     let mut passed = 0;
 
     for (_test, result) in result {
-        match result {
-            TestResult::Successful(_) => passed += 1,
-            // TestResult::CompileFailed(_) => compile_failed += 1,
-            // TestResult::RunFailed(_) => run_failed += 1,
-            _ => ()
+        if let TestResult::Successful(_) = result {
+            passed += 1;
         }
     }
 
     assert_eq!(passed, 5);
-    // std::thread::sleep(std::time::Duration::from_secs(100));
 
     Ok(())
 }

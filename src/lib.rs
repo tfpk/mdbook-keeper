@@ -36,7 +36,7 @@ fn get_tests_from_book(book: &Book) -> Vec<Test> {
                 .as_ref()
                 .and_then(|x| x.file_stem())
                 .map(|x| x.to_string_lossy().into_owned())
-                .unwrap_or(slugify(c.name.clone()).replace('-', "_"));
+                .unwrap_or_else(|| slugify(c.name.clone()).replace('-', "_"));
             extract_tests_from_string(&c.content, &file_name).0
         })
         .collect::<Vec<_>>()
