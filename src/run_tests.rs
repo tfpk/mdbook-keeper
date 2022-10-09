@@ -28,13 +28,14 @@ pub enum TestResult {
 ///  - `testcase_path` should be the path to a rust file, which contains the test code.
 ///  - `compile_type` should be [`CompileType::Full`] if the compilation should include
 ///    running the code; otherwise just [`CompileType::Check`]
-pub fn handle_test<'a>(
+pub fn handle_test(
     manifest_dir: Option<&Path>,
     target_dir: &Path,
     target_triple: &str,
     testcase_path: &Path,
     compile_type: CompileType,
     terminal_colors: bool,
+    externs: &Vec<String>,
 ) -> TestResult {
     // First, let's get the command ready, no matter
     // whether or not a Cargo.toml is specified.
@@ -81,6 +82,11 @@ pub fn handle_test<'a>(
             .arg(&deps_dir)
             .arg("--target")
             .arg(&target_triple);
+
+        for dep in externs {
+            cmd.arg("--extern");
+            cmd.arg(dep);
+        }
 
         for dep in get_rlib_dependencies(manifest_dir.to_path_buf(), target_dir.to_path_buf())
             .expect("failed to read dependencies")

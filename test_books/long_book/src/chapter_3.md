@@ -11,7 +11,6 @@ use nom::branch::alt;
   * [ ] We can see a basic example of `alt()` below.
 
 ```rust
-# extern crate nom;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::IResult;
@@ -40,7 +39,6 @@ Now that we can create more interesting regexes, we can compose them together.
 The simplest way to do this is just to evaluate them in sequence:
 
 ```rust,ignore
-# extern crate nom;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::IResult;
@@ -77,7 +75,6 @@ use nom::sequence::tuple;
 
 
 ```rust
-# extern crate nom;
 use nom::branch::alt;
 use nom::sequence::tuple;
 use nom::bytes::complete::tag_no_case;

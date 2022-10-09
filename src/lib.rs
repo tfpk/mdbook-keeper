@@ -44,6 +44,15 @@ fn get_tests_from_book(book: &Book) -> Vec<Test> {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct KeeperConfigParser {
+    /// This is unfortunately necessary thanks to how
+    /// rust-skeptic parses code examples, and how rustc
+    /// works. Any libraries named here will be passed as
+    /// `--extern <lib>` options to rustc. This has
+    /// the equivalent effect of putting an `extern crate <lib>;`
+    /// line at the start of every example.
+    #[serde(default)]
+    externs: Vec<String>,
+
     /// This is where we keep all the intermediate work
     /// of testing. If it's not specified, it's a folder
     /// inside build. If it doesn't exist, we create it.
@@ -73,7 +82,8 @@ struct KeeperConfig {
     test_dir: PathBuf,
     target_dir: PathBuf,
     manifest_dir: Option<PathBuf>,
-    terminal_colors: bool
+    terminal_colors: bool,
+    externs: Vec<String>,
 }
 
 impl KeeperConfig {
@@ -116,6 +126,7 @@ impl KeeperConfig {
             target_dir,
             manifest_dir,
             terminal_colors,
+            externs: keeper_config.externs,
         }
     }
 
@@ -176,6 +187,7 @@ fn run_tests_with_config(tests: Vec<Test>, config: &KeeperConfig) -> HashMap<Tes
                 CompileType::Full
             },
             config.terminal_colors,
+            &config.externs
         );
 
         results.insert(test, result);

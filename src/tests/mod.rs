@@ -116,6 +116,10 @@ fn long_book() -> Result<(), Error> {
         String::from("manifest_dir"),
         Value::String(cargo_dir.display().to_string()),
     );
+    table.insert(
+        String::from("externs"),
+        Value::Array(vec![Value::String("nom".to_string())]),
+    );
     let result = bookkeeper.real_run(
         Some(&table),
         root_tempdir.to_path_buf(),
