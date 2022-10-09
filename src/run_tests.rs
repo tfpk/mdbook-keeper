@@ -13,6 +13,7 @@ use cargo_metadata::Edition;
 use error_chain::error_chain;
 use walkdir::WalkDir;
 
+#[derive(Debug)]
 pub enum TestResult {
     Successful(Output),
     CompileFailed(Output),
@@ -33,6 +34,7 @@ pub fn handle_test<'a>(
     target_triple: &str,
     testcase_path: &Path,
     compile_type: CompileType,
+    terminal_colors: bool,
 ) -> TestResult {
     // First, let's get the command ready, no matter
     // whether or not a Cargo.toml is specified.
@@ -41,6 +43,7 @@ pub fn handle_test<'a>(
     let mut cmd = Command::new(rustc);
     cmd.arg(testcase_path)
         .arg("--verbose")
+        .arg(if terminal_colors {"--color=always"} else {"--color=never"})
         .arg("--crate-type=bin");
 
     if let Some(manifest_dir) = manifest_dir {
@@ -91,8 +94,10 @@ pub fn handle_test<'a>(
         }
     }
 
+    eprintln!("{cmd:#?}");
+
     let mut binary_path = PathBuf::from(testcase_path);
-    binary_path.set_extension(".exe");
+    binary_path.set_extension("exe");
 
     match compile_type {
         CompileType::Full => cmd.arg("-o").arg(&binary_path),

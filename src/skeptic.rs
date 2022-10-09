@@ -203,7 +203,7 @@ pub struct CodeBlockInfo {
     template: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 pub struct Test {
     pub(crate) name: String,
     pub(crate) text: Vec<String>,

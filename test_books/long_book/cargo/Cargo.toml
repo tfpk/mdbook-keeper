@@ -1,0 +1,10 @@
+[package]
+name = "Test"
+version = "0.1.0"
+
+[[bin]]
+name = "test"
+path = "src/main.rs"
+
+[dependencies]
+nom = "7.1.1"

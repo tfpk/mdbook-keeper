@@ -1,6 +1,9 @@
 mod run_tests;
 mod skeptic;
 
+#[cfg(test)]
+mod tests;
+
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -9,20 +12,16 @@ use mdbook::errors::Error;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
 use serde::{Deserialize, Serialize};
 use slug::slugify;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use toml::value::Table;
+use atty::Stream;
 
 use run_tests::{handle_test, CompileType, TestResult};
 use skeptic::{create_test_input, extract_tests_from_string, Test};
 
-/// A no-op preprocessor.
-#[derive(Default)]
-pub struct BookKeeper;
-
-impl BookKeeper {
-    pub fn new() -> BookKeeper {
-        BookKeeper
-    }
-}
+type PreprocessorConfig<'a> = Option<&'a Table>;
 
 fn get_tests_from_book(book: &Book) -> Vec<Test> {
     let chapters = book.sections.iter().filter_map(|b| match *b {
@@ -49,20 +48,24 @@ struct KeeperConfigParser {
     /// of testing. If it's not specified, it's a folder
     /// inside build. If it doesn't exist, we create it.
     #[serde(default)]
-    test_dir: Option<PathBuf>,
+    test_dir: Option<String>,
 
     /// If you're building this book in the repo for a
     /// real binary/library; this should point to the target
     /// dir for that binary/library.
     #[serde(default)]
-    target_dir: Option<PathBuf>,
+    target_dir: Option<String>,
 
     /// This is the path of a folder that should contain
     /// a `Cargo.toml`. If there is one there, you should
     /// assume a `Cargo.lock` will be created in the same
     /// place if it doesn't already exist.
     #[serde(default)]
-    manifest_dir: Option<PathBuf>,
+    manifest_dir: Option<String>,
+
+    /// Whether to show terminal colours.
+    #[serde(default)]
+    terminal_colors: Option<bool>,
 }
 
 #[derive(Debug)]
@@ -70,48 +73,77 @@ struct KeeperConfig {
     test_dir: PathBuf,
     target_dir: PathBuf,
     manifest_dir: Option<PathBuf>,
+    terminal_colors: bool
 }
 
-fn create_config_from_ctx(ctx: &PreprocessorContext, preprocessor_name: &str) -> KeeperConfig {
-    let preprocessor_config = ctx.config.get_preprocessor(preprocessor_name);
-    let keeper_config: KeeperConfigParser = match preprocessor_config {
-        Some(config) => toml::de::from_str(
-            &toml::ser::to_string(&config).expect("this must succeed, it was just toml"),
-        )
-        .unwrap(),
-        None => KeeperConfigParser::default(),
-    };
+impl KeeperConfig {
+    fn new(preprocessor_config: PreprocessorConfig, root: &PathBuf) -> KeeperConfig {
+        let keeper_config: KeeperConfigParser = match preprocessor_config {
+            Some(config) => toml::de::from_str(
+                &toml::ser::to_string(&config).expect("this must succeed, it was just toml"),
+            )
+            .unwrap(),
+            None => KeeperConfigParser::default(),
+        };
 
-    eprintln!("{keeper_config:?}");
+        eprintln!("{preprocessor_config:?}");
 
-    let base_dir = ctx.root.clone();
-    let test_dir = keeper_config.test_dir.unwrap_or_else(|| {
-        let mut build_dir = base_dir.clone();
-        build_dir.push("doctest_cache");
-        build_dir
-    });
+        let base_dir = root.clone();
+        let test_dir = keeper_config
+            .test_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                let mut build_dir = base_dir.clone();
+                build_dir.push("doctest_cache");
+                build_dir
+            });
 
-    let target_dir = keeper_config.target_dir.unwrap_or_else(|| {
-        let mut target_dir = test_dir.clone();
-        target_dir.push("target");
-        target_dir
-    });
+        let target_dir = keeper_config
+            .target_dir
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                let mut target_dir = test_dir.clone();
+                target_dir.push("target");
+                target_dir
+            });
 
-    let manifest_dir = keeper_config.manifest_dir;
+        let manifest_dir = keeper_config.manifest_dir.map(PathBuf::from);
 
-    KeeperConfig {
-        test_dir,
-        target_dir,
-        manifest_dir,
+        let terminal_colors = keeper_config.terminal_colors.unwrap_or_else(|| atty::is(Stream::Stdout));
+
+        KeeperConfig {
+            test_dir,
+            target_dir,
+            manifest_dir,
+            terminal_colors,
+        }
     }
-}
 
-fn setup_env_from_config(config: &KeeperConfig) {
-    if !config.test_dir.is_dir() {
-        std::fs::create_dir(&config.test_dir).unwrap();
+    fn setup_environment(&self) {
+        if !self.test_dir.is_dir() {
+            std::fs::create_dir(&self.test_dir).unwrap();
+        }
+
+        if let Some(manifest_dir) = &self.manifest_dir {
+            let cargo = std::env::var("CARGO").unwrap_or_else(|_| String::from("cargo"));
+            let mut command = Command::new(cargo);
+            command.arg("build")
+                   .current_dir(&manifest_dir)
+                   .env("CARGO_TARGET_DIR", &self.target_dir)
+                   .env("CARGO_MANIFEST_DIR", &manifest_dir);
+
+            println!("{command:#?}");
+            let mut join_handle = command
+                .spawn()
+                .expect("failed to execute process");
+
+            let build_was_ok = join_handle.wait().expect("Could not join on thread");
+
+            if !build_was_ok.success() {
+                panic!("cargo build failed!");
+            }
+        }
     }
-
-    // TODO: handle case where `cargo run` still needs to happen.
 }
 
 fn write_test_to_file(test: &Test, test_dir: &Path) -> PathBuf {
@@ -125,14 +157,15 @@ fn write_test_to_file(test: &Test, test_dir: &Path) -> PathBuf {
     file_name
 }
 
-fn run_tests(tests: &[Test], config: &KeeperConfig) {
+fn run_tests_with_config(tests: Vec<Test>, config: &KeeperConfig) -> HashMap<Test, TestResult> {
+    let mut results = HashMap::new();
     for test in tests {
-        if test.no_run {
+        if test.ignore {
             continue;
         }
-        let testcase_path = write_test_to_file(test, &config.test_dir);
+        let testcase_path = write_test_to_file(&test, &config.test_dir);
 
-        let output: TestResult = handle_test(
+        let result: TestResult = handle_test(
             config.manifest_dir.as_deref(),
             &config.target_dir,
             current_platform::CURRENT_PLATFORM,
@@ -142,50 +175,111 @@ fn run_tests(tests: &[Test], config: &KeeperConfig) {
             } else {
                 CompileType::Full
             },
+            config.terminal_colors,
         );
 
+        results.insert(test, result);
+    }
+
+    results
+}
+
+fn print_results(results: &HashMap<Test, TestResult>) {
+    for (test, output) in results {
+        eprint!(" - Test: {} ", test.name);
+        let mut show_output = true;
         let output = match output {
             TestResult::CompileFailed(output) => {
-                eprintln!("Test {} Failed To Compile.", test.name);
+                eprintln!("(Failed to compile)");
                 output
             }
             TestResult::RunFailed(output) if test.should_panic => {
-                eprintln!("Test {} Panicked As Expected.", test.name);
+                eprintln!("(Passed with panic)");
+                show_output = false;
                 output
             }
             TestResult::RunFailed(output) => {
-                eprintln!("Test {} Failed To Run Correctly.", test.name);
+                eprintln!("(Panicked)");
                 output
             }
             TestResult::Successful(output) if test.should_panic => {
-                eprintln!("Test {} Failed To Panic As Expected.", test.name);
+                eprintln!("(Failed without panic)");
                 output
             }
             TestResult::Successful(output) => {
-                eprintln!("Test {} Ran Successfully.", test.name);
+                eprintln!("(Passed with panic)");
+                show_output = false;
                 output
             }
         };
-        eprintln!("Stdout:\n{}", String::from_utf8(output.stdout).unwrap());
-        eprintln!("Stderr:\n{}", String::from_utf8(output.stderr).unwrap());
+        if show_output {
+            eprintln!("--------------- Start Of Test Log {} ---------------", test.name);
+            if !output.stdout.is_empty() {
+                eprintln!(
+                    "----- Stdout -----\n{}",
+                    String::from_utf8(output.stdout.to_vec()).unwrap()
+                );
+            } else {
+                eprintln!(
+                    "No stdout was captured.",
+                );
+            }
+            if !output.stdout.is_empty() {
+                eprintln!(
+                    "----- Stderr -----\n{}",
+                    String::from_utf8(output.stderr.to_vec()).unwrap()
+                );
+            } else {
+                eprintln!(
+                    "No stderr was captured.",
+                );
+            }
+            eprintln!("--------------- End Of Test ---------------");
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct BookKeeper;
+
+impl BookKeeper {
+    pub fn new() -> BookKeeper {
+        BookKeeper
+    }
+}
+
+impl BookKeeper {
+    pub fn real_run(
+        &self,
+        preprocessor_config: PreprocessorConfig,
+        root: PathBuf,
+        book: &mut Book,
+    ) -> Result<HashMap<Test, TestResult>, Error> {
+        let config = KeeperConfig::new(preprocessor_config, &root);
+
+        config.setup_environment();
+
+        let tests = get_tests_from_book(book);
+
+        eprintln!("{tests:#?}");
+
+        let test_results = run_tests_with_config(tests, &config);
+
+        Ok(test_results)
     }
 }
 
 impl Preprocessor for BookKeeper {
     fn name(&self) -> &str {
-        "mdbook-keeper-preprocessor"
+        "keeper"
     }
 
-    fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
-        let config = create_config_from_ctx(ctx, self.name());
+    fn run(&self, ctx: &PreprocessorContext, mut book: Book) -> Result<Book, Error> {
+        let preprocessor_config = ctx.config.get_preprocessor(self.name());
+        let root = ctx.root.to_path_buf();
 
-        setup_env_from_config(&config);
-
-        let tests = get_tests_from_book(&book);
-
-        // Step 1: Run cargo build, if cargo build is required.
-
-        run_tests(&tests, &config);
+        let test_results = self.real_run(preprocessor_config, root, &mut book)?;
+        print_results(&test_results);
 
         Ok(book)
     }
