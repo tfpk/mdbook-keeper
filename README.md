@@ -49,6 +49,16 @@ line in your `book.toml`:
 manifest_dir = "../../path/to/project/"
 ```
 
+Because `rustc` does not read a `Cargo.toml` file, it requires that any crates
+you want to use be declared with either `extern crate <name>;` or its `--extern`
+option. To simplify things, if you always want to `extern` a crate, simply
+write the following under `[preprocessor.keeper]`. This will pass the
+`--extern` option to `rustc`.
+
+``` toml
+externs = ["my_crate", "name_here"]
+```
+
 If you have built the existing project already, you may find it useful to get `mdbook-keeper`
 to use the same `target` directory as the project. This means that packages don't need
 to get re-built in two different locations when building the book and the project.
