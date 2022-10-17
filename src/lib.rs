@@ -216,7 +216,7 @@ fn print_results(results: &HashMap<Test, TestResult>) {
                 output
             }
             TestResult::Successful(output) => {
-                eprintln!("(Passed with panic)");
+                eprintln!("(Passed)");
                 show_output = false;
                 output
             }
@@ -233,7 +233,7 @@ fn print_results(results: &HashMap<Test, TestResult>) {
                     "No stdout was captured.",
                 );
             }
-            if !output.stdout.is_empty() {
+            if !output.stderr.is_empty() {
                 eprintln!(
                     "----- Stderr -----\n{}",
                     String::from_utf8(output.stderr.to_vec()).unwrap()
@@ -269,8 +269,6 @@ impl BookKeeper {
         config.setup_environment();
 
         let tests = get_tests_from_book(book);
-
-        eprintln!("{tests:#?}");
 
         let test_results = run_tests_with_config(tests, &config);
 
