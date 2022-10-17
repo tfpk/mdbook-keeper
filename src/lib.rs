@@ -96,8 +96,6 @@ impl KeeperConfig {
             None => KeeperConfigParser::default(),
         };
 
-        eprintln!("{preprocessor_config:?}");
-
         let base_dir = root.clone();
         let test_dir = keeper_config
             .test_dir
@@ -143,7 +141,6 @@ impl KeeperConfig {
                    .env("CARGO_TARGET_DIR", &self.target_dir)
                    .env("CARGO_MANIFEST_DIR", &manifest_dir);
 
-            println!("{command:#?}");
             let mut join_handle = command
                 .spawn()
                 .expect("failed to execute process");

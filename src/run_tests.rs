@@ -100,8 +100,6 @@ pub fn handle_test(
         }
     }
 
-    eprintln!("{cmd:#?}");
-
     let mut binary_path = PathBuf::from(testcase_path);
     binary_path.set_extension("exe");
 
