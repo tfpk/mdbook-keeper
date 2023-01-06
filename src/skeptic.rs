@@ -1,12 +1,24 @@
 use std::mem;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag};
+use sha2::{Sha256, Digest};
 
 #[derive(Debug)]
 pub enum Buffer {
     None,
     Code(Vec<String>),
     Heading(String),
+}
+
+fn get_hash(contents: &str) -> String {
+    let mut hasher = Sha256::new();
+
+    hasher.update(contents.as_bytes());
+
+    base64_url::encode(
+        hasher.finalize().as_slice()
+    )
+
 }
 
 pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option<String>) {
@@ -59,11 +71,12 @@ pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option
                         };
                         tests.push(Test {
                             name,
-                            text: buf,
                             ignore: code_block_info.ignore,
                             no_run: code_block_info.no_run,
                             should_panic: code_block_info.should_panic,
                             template: code_block_info.template,
+                            hash: get_hash(&buf.join("\n")),
+                            text: buf,
                         });
                     }
                 }
@@ -160,6 +173,7 @@ pub struct Test {
     pub(crate) no_run: bool,
     pub(crate) should_panic: bool,
     pub(crate) template: Option<String>,
+    pub(crate) hash: String,
 }
 
 /// Just like Rustdoc, ignore a "#" sign at the beginning of a line of code.

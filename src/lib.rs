@@ -7,6 +7,9 @@ mod tests;
 use std::fs::File;
 use std::io::prelude::*;
 
+use atty::Stream;
+use colored::{control::set_override, Colorize};
+use glob::glob;
 use mdbook::book::{Book, BookItem};
 use mdbook::errors::Error;
 use mdbook::preprocess::{Preprocessor, PreprocessorContext};
@@ -16,7 +19,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml::value::Table;
-use atty::Stream;
 
 use run_tests::{handle_test, CompileType, TestResult};
 use skeptic::{create_test_input, extract_tests_from_string, Test};
@@ -117,7 +119,11 @@ impl KeeperConfig {
 
         let manifest_dir = keeper_config.manifest_dir.map(PathBuf::from);
 
-        let terminal_colors = keeper_config.terminal_colors.unwrap_or_else(|| atty::is(Stream::Stdout));
+        let terminal_colors = keeper_config
+            .terminal_colors
+            .unwrap_or_else(|| atty::is(Stream::Stderr));
+
+        set_override(terminal_colors);
 
         KeeperConfig {
             test_dir,
@@ -136,14 +142,13 @@ impl KeeperConfig {
         if let Some(manifest_dir) = &self.manifest_dir {
             let cargo = std::env::var("CARGO").unwrap_or_else(|_| String::from("cargo"));
             let mut command = Command::new(cargo);
-            command.arg("build")
-                   .current_dir(&manifest_dir)
-                   .env("CARGO_TARGET_DIR", &self.target_dir)
-                   .env("CARGO_MANIFEST_DIR", &manifest_dir);
+            command
+                .arg("build")
+                .current_dir(manifest_dir)
+                .env("CARGO_TARGET_DIR", &self.target_dir)
+                .env("CARGO_MANIFEST_DIR", manifest_dir);
 
-            let mut join_handle = command
-                .spawn()
-                .expect("failed to execute process");
+            let mut join_handle = command.spawn().expect("failed to execute process");
 
             let build_was_ok = join_handle.wait().expect("Could not join on thread");
 
@@ -154,15 +159,19 @@ impl KeeperConfig {
     }
 }
 
-fn write_test_to_file(test: &Test, test_dir: &Path) -> PathBuf {
+fn get_test_path(test: &Test, test_dir: &Path) -> PathBuf {
     let mut file_name: PathBuf = test_dir.to_path_buf();
-    file_name.push(format!("{}.rs", test.name));
-
-    let mut output = File::create(&file_name).unwrap();
-    let test_text = create_test_input(&test.text);
-    write!(output, "{}", test_text).unwrap();
+    file_name.push(format!("keeper_{}.rs", test.hash));
 
     file_name
+}
+
+fn write_test_to_path(test: &Test, path: &Path) -> Result<(), std::io::Error> {
+    let mut output = File::create(&path)?;
+    let test_text = create_test_input(&test.text);
+    write!(output, "{}", test_text)?;
+
+    Ok(())
 }
 
 fn run_tests_with_config(tests: Vec<Test>, config: &KeeperConfig) -> HashMap<Test, TestResult> {
@@ -171,22 +180,26 @@ fn run_tests_with_config(tests: Vec<Test>, config: &KeeperConfig) -> HashMap<Tes
         if test.ignore {
             continue;
         }
-        let testcase_path = write_test_to_file(&test, &config.test_dir);
+        let testcase_path = get_test_path(&test, &config.test_dir);
 
-        let result: TestResult = handle_test(
-            config.manifest_dir.as_deref(),
-            &config.target_dir,
-            current_platform::CURRENT_PLATFORM,
-            &testcase_path,
-            if test.no_run {
-                CompileType::Check
-            } else {
-                CompileType::Full
-            },
-            config.terminal_colors,
-            &config.externs
-        );
-
+        let result: TestResult = if !testcase_path.is_file() {
+            write_test_to_path(&test, &testcase_path).unwrap();
+            handle_test(
+                config.manifest_dir.as_deref(),
+                &config.target_dir,
+                current_platform::CURRENT_PLATFORM,
+                &testcase_path,
+                if test.no_run {
+                    CompileType::Check
+                } else {
+                    CompileType::Full
+                },
+                config.terminal_colors,
+                &config.externs,
+            )
+        } else {
+            TestResult::Cached
+        };
         results.insert(test, result);
     }
 
@@ -194,58 +207,103 @@ fn run_tests_with_config(tests: Vec<Test>, config: &KeeperConfig) -> HashMap<Tes
 }
 
 fn print_results(results: &HashMap<Test, TestResult>) {
-    for (test, output) in results {
-        eprint!(" - Test: {} ", test.name);
-        let mut show_output = true;
-        let output = match output {
+    let mut cached_tests = 0;
+    for (test, test_result) in results {
+        if !matches!(test_result, &TestResult::Cached) {
+            eprint!(" - Test: {} ", test.name);
+        }
+        let output = match test_result {
             TestResult::CompileFailed(output) => {
-                eprintln!("(Failed to compile)");
+                eprintln!("{}", "(Failed to compile)".red());
                 output
             }
             TestResult::RunFailed(output) if test.should_panic => {
-                eprintln!("(Passed with panic)");
-                show_output = false;
+                eprintln!("{}", "(Panicked as expected)".green());
                 output
             }
             TestResult::RunFailed(output) => {
-                eprintln!("(Panicked)");
+                eprintln!("{}", "(Panicked)".red());
                 output
             }
             TestResult::Successful(output) if test.should_panic => {
-                eprintln!("(Failed without panic)");
+                eprintln!("{}", "(Unexpectedly suceeded)".red());
                 output
             }
             TestResult::Successful(output) => {
-                eprintln!("(Passed)");
-                show_output = false;
+                eprintln!("{}", "(Passed)".green());
                 output
             }
+            TestResult::Cached => {
+                cached_tests += 1;
+                continue;
+            }
         };
-        if show_output {
-            eprintln!("--------------- Start Of Test Log {} ---------------", test.name);
+        if !test_result.met_test_expectations(test) {
+            eprintln!(
+                "--------------- {} {} ---------------",
+                "Start of Test Log: ".bold(),
+                test.name
+            );
             if !output.stdout.is_empty() {
                 eprintln!(
-                    "----- Stdout -----\n{}",
+                    "----- {} -----\n{}",
+                    "Stdout".bold(),
                     String::from_utf8(output.stdout.to_vec()).unwrap()
                 );
             } else {
-                eprintln!(
-                    "No stdout was captured.",
-                );
+                eprintln!("{}", "No stdout was captured.".red(),);
             }
             if !output.stderr.is_empty() {
                 eprintln!(
-                    "----- Stderr -----\n{}",
+                    "----- {} -----\n\n{}",
+                    "Stderr".bold(),
                     String::from_utf8(output.stderr.to_vec()).unwrap()
                 );
             } else {
-                eprintln!(
-                    "No stderr was captured.",
-                );
+                eprintln!("{}", "No stderr was captured.".red(),);
             }
             eprintln!("--------------- End Of Test ---------------");
         }
     }
+
+    if cached_tests > 0 {
+        eprintln!(
+            "{} {} {}",
+            "Skipped".bold(),
+            cached_tests.to_string().bold().blue(),
+            "tests which had identical code, and previously passed.".bold()
+        );
+    }
+}
+
+fn clean_file(test_results: &HashMap<Test, TestResult>, path: &Path) -> Option<()> {
+    // If the file doesn't contain a hash in the right format, we quit.
+    let file_stem = path.file_stem()?;
+    let file_str = file_stem.to_str()?;
+    let hash = file_str.strip_prefix("keeper_")?;
+
+    let matching_test = test_results.iter().find(|(t, _)| t.hash == hash);
+
+    let should_remove = match matching_test {
+        Some((t, tr)) => !tr.met_test_expectations(t),
+        None => true
+    };
+
+    if should_remove {
+        std::fs::remove_file(path).expect("Should be able to delete cache-file");
+    }
+
+    Some(())
+}
+
+fn cleanup_keepercache(config: &KeeperConfig, test_results: &HashMap<Test, TestResult>) {
+    // Go through every file that's like keeper_*.rs
+    // If the test passed, keep the file otherwise, delete it.
+    let glob_str = format!("{}/keeper_*.rs", config.test_dir.display());
+    glob(&glob_str)
+        .expect("Could not list keeper files.")
+        .filter_map(Result::ok)
+        .for_each(|p| {clean_file(test_results, &p);});
 }
 
 #[derive(Default)]
@@ -271,6 +329,8 @@ impl BookKeeper {
         let tests = get_tests_from_book(book);
 
         let test_results = run_tests_with_config(tests, &config);
+
+        cleanup_keepercache(&config, &test_results);
 
         Ok(test_results)
     }

@@ -13,11 +13,32 @@ use cargo_metadata::Edition;
 use error_chain::error_chain;
 use walkdir::WalkDir;
 
+use crate::skeptic::Test;
+
 #[derive(Debug)]
 pub enum TestResult {
     Successful(Output),
     CompileFailed(Output),
     RunFailed(Output),
+    Cached,
+}
+
+impl TestResult {
+    /// A test-result meets expectations if the result is
+    /// what is "expected" from that test. This is either
+    /// a successful test, or a crash if the test is supposed
+    /// to panic. All other tests have not met expectations.
+    ///
+    /// Cached tests are assumed to have passed, since they don't
+    /// stay cached unless they pass.
+    pub fn met_test_expectations(&self, test: &Test) -> bool {
+        match self {
+            TestResult::Successful(_) if !test.should_panic => true,
+            TestResult::RunFailed(_) if test.should_panic => true,
+            TestResult::Cached => true,
+            _ => false
+        }
+    }
 }
 
 /// This function is designed to run a single test.

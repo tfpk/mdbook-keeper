@@ -10,7 +10,7 @@ Current goals of this project include:
 
  - Specifying third-party crates to include when testing a mdbook. (DONE)
  - Running tests as part of the build, rather than as a seperate command. (DONE)
- - Only running tests on code that has changed. (IN PROGRESS)
+ - Only running tests on code that has changed. (DONE)
  - The ability to see compilation or build output as part of the book
    (both to aid in debugging, and possibly also as a permanent output). (TODO)
    
