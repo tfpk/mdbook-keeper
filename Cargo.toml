@@ -1,6 +1,6 @@
 [package]
 name = "mdbook-keeper"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Tom Kunc <tom@tfpk.dev>"]
 license = "MIT OR Apache-2.0"
@@ -35,7 +35,6 @@ error-chain = "0.12.4"
 walkdir = "2.3.2"
 current_platform = "0.2.0"
 tempfile = "3.3.0"
-fs_extra = "1.2.0"
 atty = "0.2.14"
 colored = "2.0.0"
 sha2 = "0.10.6"
