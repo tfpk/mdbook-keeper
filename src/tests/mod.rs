@@ -32,6 +32,7 @@ fn get_starting_directories(book_name: &str) -> Result<(TempDir, Book), Error> {
 
     let build_config = BuildConfig {
         // since we never build, this can be anything.
+        extra_watch_dirs: vec![],
         build_dir: root_tempdir,
         create_missing: true,
         use_default_preprocessors: false,
