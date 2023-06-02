@@ -213,6 +213,10 @@ fn print_results(results: &HashMap<Test, TestResult>) {
             eprint!(" - Test: {} ", test.name);
         }
         let output = match test_result {
+            TestResult::CompileFailed(output) if test.compile_fail => {
+                eprintln!("{}", "(Failed to compile as expected)".green());
+                output
+            }
             TestResult::CompileFailed(output) => {
                 eprintln!("{}", "(Failed to compile)".red());
                 output

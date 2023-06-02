@@ -57,3 +57,12 @@ fn main() {
     panic!(":(")
 }
 ```
+
+This won't compile
+
+```rust,compile_fail
+// compile-fail
+fn main() {
+    asdf
+}
+```

@@ -33,6 +33,7 @@ impl TestResult {
     /// stay cached unless they pass.
     pub fn met_test_expectations(&self, test: &Test) -> bool {
         match self {
+            TestResult::CompileFailed(_) if !test.compile_fail => true,
             TestResult::Successful(_) if !test.should_panic => true,
             TestResult::RunFailed(_) if test.should_panic => true,
             TestResult::Cached => true,

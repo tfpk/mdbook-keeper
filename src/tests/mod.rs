@@ -72,7 +72,7 @@ fn short_book() -> Result<(), Error> {
         .map(|(t, res)| (t.text[0].trim().to_string(), (t, res)))
         .collect::<HashMap<_, _>>();
 
-    assert_eq!(test_list.len(), 5);
+    assert_eq!(test_list.len(), 6);
 
     assert!(test_list.contains_key("// compile-error"));
     assert!(matches!(
@@ -96,6 +96,12 @@ fn short_book() -> Result<(), Error> {
     assert!(matches!(
         test_list["// panic-ok"].1,
         TestResult::RunFailed(_)
+    ));
+
+    assert!(test_list.contains_key("// compile-fail"));
+    assert!(matches!(
+        test_list["// compile-fail"].1,
+        TestResult::CompileFailed(_)
     ));
 
     Ok(())
