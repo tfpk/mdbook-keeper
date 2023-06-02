@@ -158,13 +158,16 @@ fn nested_book() -> Result<(), Error> {
         .map(|(t, res)| (t.text[0].trim().to_string(), (t, res)))
         .collect::<HashMap<_, _>>();
 
-    assert_eq!(test_list.len(), 3);
+    assert_eq!(test_list.len(), 4);
 
     assert!(test_list.contains_key("// ok top-level"));
     assert!(matches!(test_list["// ok top-level"].1, TestResult::Successful(_)));
 
     assert!(test_list.contains_key("// ok nested"));
     assert!(matches!(test_list["// ok nested"].1, TestResult::Successful(_)));
+
+    assert!(test_list.contains_key("// ok aliased"));
+    assert!(matches!(test_list["// ok aliased"].1, TestResult::Successful(_)));
 
     assert!(test_list.contains_key("// ok double-nested"));
     assert!(matches!(test_list["// ok double-nested"].1, TestResult::Successful(_)));
