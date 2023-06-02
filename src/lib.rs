@@ -26,7 +26,11 @@ use skeptic::{create_test_input, extract_tests_from_string, Test};
 type PreprocessorConfig<'a> = Option<&'a Table>;
 
 fn get_tests_from_book(book: &Book) -> Vec<Test> {
-    let chapters = book.sections.iter().filter_map(|b| match *b {
+    get_tests_from_items(&book.sections)
+}
+
+fn get_tests_from_items(items: &Vec<BookItem>) -> Vec<Test> {
+    let chapters = items.iter().filter_map(|b| match *b {
         BookItem::Chapter(ref ch) => Some(ch),
         _ => None,
     });
@@ -39,7 +43,9 @@ fn get_tests_from_book(book: &Book) -> Vec<Test> {
                 .and_then(|x| x.file_stem())
                 .map(|x| x.to_string_lossy().into_owned())
                 .unwrap_or_else(|| slugify(c.name.clone()).replace('-', "_"));
-            extract_tests_from_string(&c.content, &file_name).0
+            let (mut tests, _) = extract_tests_from_string(&c.content, &file_name);
+            tests.append(&mut get_tests_from_items(&c.sub_items));
+            tests
         })
         .collect::<Vec<_>>()
 }

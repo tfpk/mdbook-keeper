@@ -142,3 +142,32 @@ fn long_book() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn nested_book() -> Result<(), Error> {
+    let (tmp_dir, mut book) = get_starting_directories("nested_book")?;
+    let root_tempdir = tmp_dir.path();
+
+    let bookkeeper = BookKeeper::new();
+
+    let table = Table::new();
+    let result = bookkeeper.real_run(Some(&table), root_tempdir.to_path_buf(), &mut book)?;
+
+    let test_list = result
+        .into_iter()
+        .map(|(t, res)| (t.text[0].trim().to_string(), (t, res)))
+        .collect::<HashMap<_, _>>();
+
+    assert_eq!(test_list.len(), 3);
+
+    assert!(test_list.contains_key("// ok top-level"));
+    assert!(matches!(test_list["// ok top-level"].1, TestResult::Successful(_)));
+
+    assert!(test_list.contains_key("// ok nested"));
+    assert!(matches!(test_list["// ok nested"].1, TestResult::Successful(_)));
+
+    assert!(test_list.contains_key("// ok double-nested"));
+    assert!(matches!(test_list["// ok double-nested"].1, TestResult::Successful(_)));
+
+    Ok(())
+}
