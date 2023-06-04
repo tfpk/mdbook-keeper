@@ -70,8 +70,12 @@ pub fn handle_test(
             "--color=always"
         } else {
             "--color=never"
-        })
-        .arg("--crate-type=bin");
+        });
+
+    match compile_type {
+        CompileType::Full => cmd.arg("--crate-type=bin"),
+        CompileType::Check => cmd.arg("--crate-type=lib"),
+    };
 
     if let Some(manifest_dir) = manifest_dir {
         // OK, here's where a bunch of magic happens using assumptions

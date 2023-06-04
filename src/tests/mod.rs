@@ -83,7 +83,7 @@ fn short_book() -> Result<(), Error> {
     assert!(test_list.contains_key("// no-run"));
     assert!(matches!(
         test_list["// no-run"].1,
-        TestResult::CompileFailed(_)
+        TestResult::Successful(_)
     ));
 
     assert!(test_list.contains_key("// ok"));
