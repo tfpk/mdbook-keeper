@@ -36,7 +36,7 @@ impl TestResult {
             TestResult::Successful(_) if !test.should_panic => true,
             TestResult::RunFailed(_) if test.should_panic => true,
             TestResult::Cached => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -65,7 +65,11 @@ pub fn handle_test(
     let mut cmd = Command::new(rustc);
     cmd.arg(testcase_path)
         .arg("--verbose")
-        .arg(if terminal_colors {"--color=always"} else {"--color=never"})
+        .arg(if terminal_colors {
+            "--color=always"
+        } else {
+            "--color=never"
+        })
         .arg("--crate-type=bin");
 
     if let Some(manifest_dir) = manifest_dir {

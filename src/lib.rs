@@ -286,7 +286,7 @@ fn clean_file(test_results: &HashMap<Test, TestResult>, path: &Path) -> Option<(
 
     let should_remove = match matching_test {
         Some((t, tr)) => !tr.met_test_expectations(t),
-        None => true
+        None => true,
     };
 
     if should_remove {
@@ -303,7 +303,9 @@ fn cleanup_keepercache(config: &KeeperConfig, test_results: &HashMap<Test, TestR
     glob(&glob_str)
         .expect("Could not list keeper files.")
         .filter_map(Result::ok)
-        .for_each(|p| {clean_file(test_results, &p);});
+        .for_each(|p| {
+            clean_file(test_results, &p);
+        });
 }
 
 #[derive(Default)]

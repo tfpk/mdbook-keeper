@@ -1,7 +1,7 @@
 use std::mem;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug)]
 pub enum Buffer {
@@ -15,10 +15,7 @@ fn get_hash(contents: &str) -> String {
 
     hasher.update(contents.as_bytes());
 
-    base64_url::encode(
-        hasher.finalize().as_slice()
-    )
-
+    base64_url::encode(hasher.finalize().as_slice())
 }
 
 pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option<String>) {

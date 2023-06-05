@@ -121,11 +121,7 @@ fn long_book() -> Result<(), Error> {
         String::from("externs"),
         Value::Array(vec![Value::String("nom".to_string())]),
     );
-    let result = bookkeeper.real_run(
-        Some(&table),
-        root_tempdir.to_path_buf(),
-        &mut book
-    )?;
+    let result = bookkeeper.real_run(Some(&table), root_tempdir.to_path_buf(), &mut book)?;
     crate::print_results(&result);
 
     assert_eq!(result.len(), 5);
