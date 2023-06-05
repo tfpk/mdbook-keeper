@@ -29,7 +29,7 @@ fn get_tests_from_book(book: &Book) -> Vec<Test> {
     get_tests_from_items(&book.sections)
 }
 
-fn get_tests_from_items(items: &Vec<BookItem>) -> Vec<Test> {
+fn get_tests_from_items(items: &[BookItem]) -> Vec<Test> {
     let chapters = items.iter().filter_map(|b| match *b {
         BookItem::Chapter(ref ch) => Some(ch),
         _ => None,
