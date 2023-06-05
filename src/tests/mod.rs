@@ -163,16 +163,28 @@ fn nested_book() -> Result<(), Error> {
     assert_eq!(test_list.len(), 4);
 
     assert!(test_list.contains_key("// ok top-level"));
-    assert!(matches!(test_list["// ok top-level"].1, TestResult::Successful(_)));
+    assert!(matches!(
+        test_list["// ok top-level"].1,
+        TestResult::Successful(_)
+    ));
 
     assert!(test_list.contains_key("// ok nested"));
-    assert!(matches!(test_list["// ok nested"].1, TestResult::Successful(_)));
+    assert!(matches!(
+        test_list["// ok nested"].1,
+        TestResult::Successful(_)
+    ));
 
     assert!(test_list.contains_key("// ok aliased"));
-    assert!(matches!(test_list["// ok aliased"].1, TestResult::Successful(_)));
+    assert!(matches!(
+        test_list["// ok aliased"].1,
+        TestResult::Successful(_)
+    ));
 
     assert!(test_list.contains_key("// ok double-nested"));
-    assert!(matches!(test_list["// ok double-nested"].1, TestResult::Successful(_)));
+    assert!(matches!(
+        test_list["// ok double-nested"].1,
+        TestResult::Successful(_)
+    ));
 
     Ok(())
 }
