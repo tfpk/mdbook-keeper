@@ -52,7 +52,7 @@ pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option
                     }
                     buf.extend(text.lines().map(|s| format!("{}\n", s)));
                 } else if let Buffer::Heading(ref mut buf) = buffer {
-                    buf.push_str(&*text);
+                    buf.push_str(&text);
                 }
             }
             Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref info))) => {

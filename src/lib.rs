@@ -89,7 +89,7 @@ struct KeeperConfig {
 }
 
 impl KeeperConfig {
-    fn new(preprocessor_config: PreprocessorConfig, root: &PathBuf) -> KeeperConfig {
+    fn new(preprocessor_config: PreprocessorConfig, root: &Path) -> KeeperConfig {
         let keeper_config: KeeperConfigParser = match preprocessor_config {
             Some(config) => toml::de::from_str(
                 &toml::ser::to_string(&config).expect("this must succeed, it was just toml"),
@@ -98,12 +98,12 @@ impl KeeperConfig {
             None => KeeperConfigParser::default(),
         };
 
-        let base_dir = root.clone();
+        let base_dir = root.to_path_buf();
         let test_dir = keeper_config
             .test_dir
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                let mut build_dir = base_dir.clone();
+                let mut build_dir = base_dir;
                 build_dir.push("doctest_cache");
                 build_dir
             });
@@ -167,7 +167,7 @@ fn get_test_path(test: &Test, test_dir: &Path) -> PathBuf {
 }
 
 fn write_test_to_path(test: &Test, path: &Path) -> Result<(), std::io::Error> {
-    let mut output = File::create(&path)?;
+    let mut output = File::create(path)?;
     let test_text = create_test_input(&test.text);
     write!(output, "{}", test_text)?;
 
