@@ -40,7 +40,6 @@ fn get_tests_from_items(items: &Vec<BookItem>) -> Vec<Test> {
             let file_name = c
                 .path
                 .as_ref()
-                .and_then(|x| x.file_stem())
                 .map(|x| x.to_string_lossy().into_owned())
                 .unwrap_or_else(|| slugify(c.name.clone()).replace('-', "_"));
             let (mut tests, _) = extract_tests_from_string(&c.content, &file_name);
