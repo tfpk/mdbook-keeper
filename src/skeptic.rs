@@ -69,6 +69,7 @@ pub fn extract_tests_from_string(s: &str, file_stem: &str) -> (Vec<Test>, Option
                         tests.push(Test {
                             name,
                             ignore: code_block_info.ignore,
+                            compile_fail: code_block_info.compile_fail,
                             no_run: code_block_info.no_run,
                             should_panic: code_block_info.should_panic,
                             template: code_block_info.template,
@@ -110,6 +111,7 @@ pub fn parse_code_block_info(info: &str) -> CodeBlockInfo {
     let mut info = CodeBlockInfo {
         is_rust: false,
         should_panic: false,
+        compile_fail: false,
         ignore: false,
         no_run: false,
         is_old_template: false,
@@ -130,6 +132,10 @@ pub fn parse_code_block_info(info: &str) -> CodeBlockInfo {
             "ignore" => {
                 info.ignore = true;
                 seen_rust_tags = true
+            }
+            "compile_fail" => {
+                info.compile_fail = true;
+                seen_rust_tags = true;
             }
             "no_run" => {
                 info.no_run = true;
@@ -157,6 +163,7 @@ pub struct CodeBlockInfo {
     is_rust: bool,
     should_panic: bool,
     ignore: bool,
+    compile_fail: bool,
     no_run: bool,
     is_old_template: bool,
     template: Option<String>,
@@ -167,6 +174,7 @@ pub struct Test {
     pub(crate) name: String,
     pub(crate) text: Vec<String>,
     pub(crate) ignore: bool,
+    pub(crate) compile_fail: bool,
     pub(crate) no_run: bool,
     pub(crate) should_panic: bool,
     pub(crate) template: Option<String>,
