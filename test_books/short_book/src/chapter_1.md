@@ -10,14 +10,11 @@ fn main() {
 }
 ```
 
-This fragment would break, but won't! Thanks `no_run`
+This fragment would break (missing `main()`), but won't! Thanks `no_run`
 
 ```rust,no_run
 // no-run
-fn main() {
-    println!("Another example!");
-    asdf
-}
+struct Foo;
 ```
 
 This fragment will compile correctly.
