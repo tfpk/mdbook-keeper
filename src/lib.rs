@@ -4,20 +4,23 @@ mod skeptic;
 #[cfg(test)]
 mod tests;
 
-use std::fs::File;
-use std::io::prelude::*;
+use std::{fs::File, io::prelude::*};
 
 use atty::Stream;
 use colored::{control::set_override, Colorize};
 use glob::glob;
-use mdbook::book::{Book, BookItem};
-use mdbook::errors::Error;
-use mdbook::preprocess::{Preprocessor, PreprocessorContext};
+use mdbook::{
+    book::{Book, BookItem},
+    errors::Error,
+    preprocess::{Preprocessor, PreprocessorContext},
+};
 use serde::{Deserialize, Serialize};
 use slug::slugify;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use toml::value::Table;
 
 use run_tests::{handle_test, CompileType, TestResult};
@@ -79,6 +82,20 @@ struct KeeperConfigParser {
     #[serde(default)]
     manifest_dir: Option<String>,
 
+    /// This allows you to specify if the manifest dir is
+    /// of a cargo workspace. If set to true, `--workspace`
+    /// will be passed to the invocation of `cargo build`.
+    #[serde(default)]
+    is_workspace: Option<bool>,
+
+    /// This allows you to specify the features you want to
+    /// invoke `cargo build` with. If you set this to
+    /// `["first", "second"], it  causes `--features
+    /// first,second` to be added to the invocation of
+    /// `cargo build`.
+    #[serde(default)]
+    build_features: Vec<String>,
+
     /// Whether to show terminal colours.
     #[serde(default)]
     terminal_colors: Option<bool>,
@@ -89,6 +106,8 @@ struct KeeperConfig {
     test_dir: PathBuf,
     target_dir: PathBuf,
     manifest_dir: Option<PathBuf>,
+    is_workspace: bool,
+    build_features: Vec<String>,
     terminal_colors: bool,
     externs: Vec<String>,
 }
@@ -123,6 +142,7 @@ impl KeeperConfig {
             });
 
         let manifest_dir = keeper_config.manifest_dir.map(PathBuf::from);
+        let is_workspace = keeper_config.is_workspace.unwrap_or(false);
 
         let terminal_colors = keeper_config
             .terminal_colors
@@ -134,6 +154,8 @@ impl KeeperConfig {
             test_dir,
             target_dir,
             manifest_dir,
+            is_workspace,
+            build_features: keeper_config.build_features,
             terminal_colors,
             externs: keeper_config.externs,
         }
@@ -146,12 +168,21 @@ impl KeeperConfig {
 
         if let Some(manifest_dir) = &self.manifest_dir {
             let cargo = std::env::var("CARGO").unwrap_or_else(|_| String::from("cargo"));
+
             let mut command = Command::new(cargo);
             command
                 .arg("build")
                 .current_dir(manifest_dir)
                 .env("CARGO_TARGET_DIR", &self.target_dir)
                 .env("CARGO_MANIFEST_DIR", manifest_dir);
+
+            if self.is_workspace {
+                command.arg("--workspace");
+            }
+
+            if !self.build_features.is_empty() {
+                command.args(["--features", &self.build_features.join(",")]);
+            }
 
             let mut join_handle = command.spawn().expect("failed to execute process");
 

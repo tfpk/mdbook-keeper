@@ -77,6 +77,21 @@ and `src/main.rs` (or `src/lib.rs`). Place all required dependencies in the `Car
 
 Then, point `manifest_dir` to that directory, as shown above. 
 
+## Working with `cargo` workspaces and build features
+
+If you are working with a `cargo` workspace, you'll need to have the `--workspace` argument
+passed to the invocation of `cargo build`. Likewise, if you need to build your crate with
+specific features enabled, you'll need to pass them via `--features first,second` - as a
+comma separated list. In the `mdbook-keeper` config, you can do so via:
+
+```toml
+is_workspace = true
+build_features = ["first", "second"]
+```
+
+Both of these are optional: if they are not present in the config, the manifest dir is not
+considered a workspace and no features get enabled.
+
 ## Other Configuration Options
 
 All of these options can be placed in the `book.toml` file, after `[preprocessor.keeper]`.
